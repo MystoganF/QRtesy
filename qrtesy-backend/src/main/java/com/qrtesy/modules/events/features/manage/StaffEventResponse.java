@@ -19,6 +19,7 @@ public record StaffEventResponse(
         int capacity,
         long occupiedCount,
         long remainingSpots,
+        long waitlistCount,
         String status
 ) {
 }

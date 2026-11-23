@@ -20,4 +20,5 @@ export interface RegistrationTicket {
   eventStartsAt: string;
   eventEndsAt: string;
   timezone: string;
+  waitlistPosition?: number | null;
 }

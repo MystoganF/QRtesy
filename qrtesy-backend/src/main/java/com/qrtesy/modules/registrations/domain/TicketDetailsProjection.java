@@ -17,4 +17,5 @@ public interface TicketDetailsProjection {
     String getEventVenue();
     Instant getEventStartsAt();
     Instant getEventEndsAt();
+    Integer getWaitlistPosition();
 }

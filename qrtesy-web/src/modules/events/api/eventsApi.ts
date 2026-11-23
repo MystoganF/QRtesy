@@ -4,7 +4,7 @@ import type {
   PublicEventSummary,
   SaveEventPayload,
   StaffEventItem,
-} from '../types/event.types';
+} from '../type/event.types';
 
 export const eventsApi = {
   listPublic: () => apiClient.get<PublicEventSummary[]>('/api/events'),

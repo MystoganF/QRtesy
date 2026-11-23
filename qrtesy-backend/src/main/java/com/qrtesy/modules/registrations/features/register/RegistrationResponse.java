@@ -17,6 +17,41 @@ public record RegistrationResponse(
         String eventVenue,
         OffsetDateTime eventStartsAt,
         OffsetDateTime eventEndsAt,
-        String timezone
+        String timezone,
+        Integer waitlistPosition
 ) {
+    public RegistrationResponse(
+            UUID registrationId,
+            String ticketCode,
+            String fullName,
+            String email,
+            String mobile,
+            String status,
+            OffsetDateTime registeredAt,
+            OffsetDateTime checkedInAt,
+            UUID eventId,
+            String eventTitle,
+            String eventVenue,
+            OffsetDateTime eventStartsAt,
+            OffsetDateTime eventEndsAt,
+            String timezone
+    ) {
+        this(
+                registrationId,
+                ticketCode,
+                fullName,
+                email,
+                mobile,
+                status,
+                registeredAt,
+                checkedInAt,
+                eventId,
+                eventTitle,
+                eventVenue,
+                eventStartsAt,
+                eventEndsAt,
+                timezone,
+                null
+        );
+    }
 }

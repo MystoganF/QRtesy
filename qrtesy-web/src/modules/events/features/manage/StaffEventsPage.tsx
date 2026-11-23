@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { formatEventDate, formatTimeRange } from '@/shared/lib/dateTime';
 import { eventsApi } from '../../api/eventsApi';
-import type { EventStatus, StaffEventItem } from '../../types/event.types';
+import type { EventStatus } from '../../type/event.types';
+import type { StaffEventItem } from '../../type/event.types';
 import { EventFormModal } from './EventFormModal';
 
 function StatusBadge({ status }: { status: EventStatus }) {
@@ -127,7 +128,14 @@ export function StaffEventsPage() {
                   </span>
                   <span className="inline-flex items-center gap-1.5 font-medium text-slate-800">
                     <Users className="h-3.5 w-3.5 text-slate-400" />
-                    {event.occupiedCount} / {event.capacity} registered
+                    <span>
+                      {event.occupiedCount} / {event.capacity} registered
+                    </span>
+                    {event.waitlistCount > 0 && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                        +{event.waitlistCount} waitlisted
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>

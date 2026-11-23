@@ -32,6 +32,7 @@ export interface StaffEventItem {
   capacity: number;
   occupiedCount: number;
   remainingSpots: number;
+  waitlistCount: number;
   status: EventStatus;
 }
 

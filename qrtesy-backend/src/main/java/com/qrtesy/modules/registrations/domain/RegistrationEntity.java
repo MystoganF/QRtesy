@@ -69,6 +69,31 @@ public class RegistrationEntity {
         return entity;
     }
 
+    public static RegistrationEntity createWaitlisted(
+            UUID eventId,
+            String fullName,
+            String email,
+            String mobile,
+            String ticketCode,
+            Instant registeredAt
+    ) {
+        RegistrationEntity entity = new RegistrationEntity();
+        entity.eventId = eventId;
+        entity.fullName = fullName;
+        entity.email = email;
+        entity.mobile = mobile;
+        entity.ticketCode = ticketCode;
+        entity.status = RegistrationStatus.WAITLISTED;
+        entity.registeredAt = registeredAt;
+        return entity;
+    }
+
+    public void promoteToConfirmed() {
+        if (this.status == RegistrationStatus.WAITLISTED) {
+            this.status = RegistrationStatus.CONFIRMED;
+        }
+    }
+
     public void markCheckedIn(Instant checkedInAt, UUID staffUserId) {
         this.status = RegistrationStatus.CHECKED_IN;
         this.checkedInAt = checkedInAt;

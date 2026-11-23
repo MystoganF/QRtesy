@@ -5,6 +5,7 @@ import com.qrtesy.modules.events.domain.EventRepository;
 import com.qrtesy.modules.events.domain.EventStatus;
 import com.qrtesy.modules.registrations.domain.RegistrationEntity;
 import com.qrtesy.modules.registrations.domain.RegistrationRepository;
+import com.qrtesy.modules.registrations.domain.RegistrationStatus;
 import com.qrtesy.shared.exception.DomainException;
 import java.security.SecureRandom;
 import java.time.Instant;
@@ -62,30 +63,23 @@ public class RegisterAttendeeHandler {
             throw new DomainException(
                     HttpStatus.CONFLICT,
                     "ALREADY_REGISTERED",
-                    "This email address is already registered for the selected event."
+                    "This email address is already registered or waitlisted for the selected event."
             );
         }
 
         long occupiedSpots = registrationRepository.countOccupiedSpots(event.getId());
-        if (occupiedSpots >= event.getCapacity()) {
-            throw new DomainException(
-                    HttpStatus.CONFLICT,
-                    "EVENT_FULL",
-                    "This event has reached full capacity."
-            );
-        }
+        boolean joinWaitlist = occupiedSpots >= event.getCapacity();
 
         String ticketCode = generateUniqueTicketCode();
-        RegistrationEntity saved = registrationRepository.save(
-                RegistrationEntity.createConfirmed(
-                        event.getId(),
-                        cleanName,
-                        normalizedEmail,
-                        cleanMobile,
-                        ticketCode,
-                        now
-                )
-        );
+        RegistrationEntity toSave = joinWaitlist
+                ? RegistrationEntity.createWaitlisted(event.getId(), cleanName, normalizedEmail, cleanMobile, ticketCode, now)
+                : RegistrationEntity.createConfirmed(event.getId(), cleanName, normalizedEmail, cleanMobile, ticketCode, now);
+
+        RegistrationEntity saved = registrationRepository.save(toSave);
+
+        Integer waitlistPosition = saved.getStatus() == RegistrationStatus.WAITLISTED
+                ? registrationRepository.findWaitlistPosition(event.getId(), saved.getRegisteredAt(), saved.getId())
+                : null;
 
         return new RegistrationResponse(
                 saved.getId(),
@@ -101,7 +95,8 @@ public class RegisterAttendeeHandler {
                 event.getVenue(),
                 event.getStartsAt().atZone(manilaZoneId).toOffsetDateTime(),
                 event.getEndsAt().atZone(manilaZoneId).toOffsetDateTime(),
-                manilaZoneId.getId()
+                manilaZoneId.getId(),
+                waitlistPosition
         );
     }
 
