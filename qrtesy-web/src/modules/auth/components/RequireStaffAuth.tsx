@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, Loader2, LogOut, QrCode, UserCheck } from 'lucide-react';
+import { CalendarCog, ClipboardList, Loader2, LogOut, QrCode, UserCheck } from 'lucide-react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { authApi } from '../api/authApi';
@@ -48,6 +48,10 @@ export function RequireStaffAuth() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
+          <NavLink to="/staff/events" className={tabClass}>
+            <CalendarCog className="h-4 w-4" />
+            <span>Events</span>
+          </NavLink>
           <NavLink to="/staff/checkin" className={tabClass}>
             <QrCode className="h-4 w-4" />
             <span>Door Check-in</span>
