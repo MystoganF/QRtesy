@@ -1,5 +1,6 @@
 package com.qrtesy.modules.registrations.domain;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -48,4 +49,23 @@ public interface RegistrationRepository extends JpaRepository<RegistrationEntity
             WHERE UPPER(r.ticket_code) = UPPER(:ticketCode)
             """, nativeQuery = true)
     Optional<TicketDetailsProjection> findTicketDetailsByCode(@Param("ticketCode") String ticketCode);
+
+    long countByEventIdAndStatus(UUID eventId, RegistrationStatus status);
+
+    @Query("""
+            SELECT r
+            FROM RegistrationEntity r
+            WHERE r.eventId = :eventId
+              AND (
+                  LOWER(r.fullName) LIKE :searchPattern
+                  OR LOWER(r.email) LIKE :searchPattern
+                  OR r.mobile LIKE :searchPattern
+                  OR LOWER(r.ticketCode) LIKE :searchPattern
+              )
+            ORDER BY r.registeredAt DESC
+            """)
+    List<RegistrationEntity> searchByEventId(
+            @Param("eventId") UUID eventId,
+            @Param("searchPattern") String searchPattern
+    );
 }
