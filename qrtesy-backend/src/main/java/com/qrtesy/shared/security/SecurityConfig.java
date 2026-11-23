@@ -53,6 +53,7 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/me", "/api/auth/logout").authenticated()
                         .requestMatchers("/api/events/**").permitAll()
                         .requestMatchers("/api/registrations/**").permitAll()
                         .requestMatchers("/api/staff/**").authenticated()
