@@ -1,0 +1,23 @@
+# Environment & secrets (NEVER commit real .env files)
+.env
+.env.local
+.env.*.local
+
+# Frontend (Node / Vite)
+qrtesy-web/node_modules/
+qrtesy-web/dist/
+qrtesy-web/.vite/
+
+# Backend (Java / Maven / Spring Boot)
+qrtesy-api/target/
+qrtesy-api/.mvn/timing.properties
+*.jar
+*.log
+
+# OS & IDEs
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
