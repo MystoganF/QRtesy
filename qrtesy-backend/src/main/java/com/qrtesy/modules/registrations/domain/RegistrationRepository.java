@@ -6,6 +6,8 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 public interface RegistrationRepository extends JpaRepository<RegistrationEntity, UUID> {
 
@@ -68,4 +70,17 @@ public interface RegistrationRepository extends JpaRepository<RegistrationEntity
             @Param("eventId") UUID eventId,
             @Param("searchPattern") String searchPattern
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r
+            FROM RegistrationEntity r
+            WHERE r.eventId = :eventId
+              AND UPPER(r.ticketCode) = UPPER(:ticketCode)
+            """)
+    Optional<RegistrationEntity> findByEventIdAndTicketCodeForUpdate(
+            @Param("eventId") UUID eventId,
+            @Param("ticketCode") String ticketCode
+    );
+
 }

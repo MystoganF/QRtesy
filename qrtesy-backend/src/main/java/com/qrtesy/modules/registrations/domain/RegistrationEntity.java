@@ -31,7 +31,7 @@ public class RegistrationEntity {
     @Column(nullable = false, length = 20)
     private String mobile;
 
-    @Column(name = "ticket_code", nullable = false, unique = true, length = 20)
+    @Column(name = "ticket_code", nullable = false, unique = true, length = 32)
     private String ticketCode;
 
     @Enumerated(EnumType.STRING)
@@ -43,6 +43,9 @@ public class RegistrationEntity {
 
     @Column(name = "checked_in_at")
     private Instant checkedInAt;
+
+    @Column(name = "checked_in_by")
+    private UUID checkedInBy;
 
     protected RegistrationEntity() {
     }
@@ -64,6 +67,12 @@ public class RegistrationEntity {
         entity.status = RegistrationStatus.CONFIRMED;
         entity.registeredAt = registeredAt;
         return entity;
+    }
+
+    public void markCheckedIn(Instant checkedInAt, UUID staffUserId) {
+        this.status = RegistrationStatus.CHECKED_IN;
+        this.checkedInAt = checkedInAt;
+        this.checkedInBy = staffUserId;
     }
 
     public UUID getId() {
@@ -100,5 +109,9 @@ public class RegistrationEntity {
 
     public Instant getCheckedInAt() {
         return checkedInAt;
+    }
+
+    public UUID getCheckedInBy() {
+        return checkedInBy;
     }
 }
