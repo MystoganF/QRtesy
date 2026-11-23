@@ -16,6 +16,7 @@ public record EventAttendeesResponse(
         int checkedInCount,
         int totalOccupied,
         int remainingSpots,
+        int waitlistedCount,
         List<AttendeeItemResponse> attendees
 ) {
 }

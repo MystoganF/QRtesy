@@ -1,5 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
-import { Calendar, CheckCircle2, Clock, MapPin, User } from 'lucide-react';
+import { Calendar, CheckCircle2, Clock, MapPin, User, XCircle } from 'lucide-react';
 import { formatDateTime, formatEventDate, formatTimeRange } from '@/shared/lib/dateTime';
 import type { RegistrationTicket } from '../../types/registration.types';
 
@@ -9,6 +9,8 @@ interface TicketPassCardProps {
 
 export function TicketPassCard({ ticket }: TicketPassCardProps) {
   const isCheckedIn = ticket.status === 'CHECKED_IN';
+  const isWaitlisted = ticket.status === 'WAITLISTED';
+  const isCancelled = ticket.status === 'CANCELLED';
 
   return (
     <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -21,10 +23,20 @@ export function TicketPassCard({ ticket }: TicketPassCardProps) {
             className={
               isCheckedIn
                 ? 'rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-300'
-                : 'rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white'
+                : isWaitlisted
+                  ? 'rounded-full bg-amber-400/20 px-2.5 py-0.5 text-xs font-semibold text-amber-200'
+                  : isCancelled
+                    ? 'rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-200'
+                    : 'rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-semibold text-white'
             }
           >
-            {isCheckedIn ? 'Checked In' : 'Confirmed'}
+            {isCheckedIn
+              ? 'Checked In'
+              : isWaitlisted
+                ? `Waitlisted${ticket.waitlistPosition ? ` · #${ticket.waitlistPosition}` : ''}`
+                : isCancelled
+                  ? 'Cancelled'
+                  : 'Confirmed'}
           </span>
         </div>
         <h1 className="mt-2 text-xl font-bold leading-snug">{ticket.eventTitle}</h1>
@@ -38,7 +50,9 @@ export function TicketPassCard({ ticket }: TicketPassCardProps) {
           {ticket.ticketCode}
         </p>
         <p className="mt-1 text-center text-xs text-slate-500">
-          Present this QR code or ticket code at the event entrance.
+          {isWaitlisted
+            ? 'Your spot is currently on the waitlist. Check back here via Find Ticket for promotion updates.'
+            : 'Present this QR code or ticket code at the event entrance.'}
         </p>
       </div>
 
@@ -77,6 +91,22 @@ export function TicketPassCard({ ticket }: TicketPassCardProps) {
             <p className="font-medium text-slate-900">{ticket.eventVenue}</p>
           </div>
         </div>
+
+        {isWaitlisted && (
+          <div className="mt-2 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs font-medium text-amber-900">
+            <Clock className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+            <span>
+              You are #{ticket.waitlistPosition ?? 1} on the waitlist. Door check-in is only enabled once a spot opens and your pass updates to Confirmed.
+            </span>
+          </div>
+        )}
+
+        {isCancelled && (
+          <div className="mt-2 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800">
+            <XCircle className="h-4 w-4 shrink-0" />
+            <span>This registration has been cancelled and is no longer valid for entry.</span>
+          </div>
+        )}
 
         {isCheckedIn && ticket.checkedInAt && (
           <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">

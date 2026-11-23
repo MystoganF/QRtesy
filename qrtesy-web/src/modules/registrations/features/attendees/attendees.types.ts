@@ -7,6 +7,7 @@ export interface AttendeeItem {
   status: 'CONFIRMED' | 'CHECKED_IN' | 'WAITLISTED' | 'CANCELLED';
   registeredAt: string;
   checkedInAt: string | null;
+  waitlistPosition?: number | null;
 }
 
 export interface EventAttendeesResponse {
@@ -21,5 +22,6 @@ export interface EventAttendeesResponse {
   checkedInCount: number;
   totalOccupied: number;
   remainingSpots: number;
+  waitlistedCount: number;
   attendees: AttendeeItem[];
 }

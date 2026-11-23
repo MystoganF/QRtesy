@@ -55,6 +55,9 @@ public class ListEventAttendeesHandler {
         int checkedInCount = (int) registrationRepository.countByEventIdAndStatus(
                 eventId, RegistrationStatus.CHECKED_IN
         );
+        int waitlistedCount = (int) registrationRepository.countByEventIdAndStatus(
+                eventId, RegistrationStatus.WAITLISTED
+        );
         int totalOccupied = confirmedCount + checkedInCount;
         int remainingSpots = Math.max(0, event.getCapacity() - totalOccupied);
 
@@ -70,11 +73,16 @@ public class ListEventAttendeesHandler {
                 checkedInCount,
                 totalOccupied,
                 remainingSpots,
+                waitlistedCount,
                 attendees
         );
     }
 
     private AttendeeItemResponse toItem(RegistrationEntity r) {
+        Integer waitlistPosition = r.getStatus() == RegistrationStatus.WAITLISTED
+                ? registrationRepository.findWaitlistPosition(r.getEventId(), r.getRegisteredAt(), r.getId())
+                : null;
+
         return new AttendeeItemResponse(
                 r.getId(),
                 r.getTicketCode(),
@@ -85,7 +93,8 @@ public class ListEventAttendeesHandler {
                 r.getRegisteredAt().atZone(manilaZoneId).toOffsetDateTime(),
                 r.getCheckedInAt() != null
                         ? r.getCheckedInAt().atZone(manilaZoneId).toOffsetDateTime()
-                        : null
+                        : null,
+                waitlistPosition
         );
     }
 }

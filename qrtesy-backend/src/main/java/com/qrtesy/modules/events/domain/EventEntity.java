@@ -50,6 +50,54 @@ public class EventEntity {
     protected EventEntity() {
     }
 
+    public static EventEntity create(
+            String title,
+            String description,
+            String venue,
+            Instant startsAt,
+            Instant endsAt,
+            int capacity,
+            EventStatus status,
+            Instant now
+    ) {
+        EventEntity entity = new EventEntity();
+        entity.title = title;
+        entity.description = description;
+        entity.venue = venue;
+        entity.startsAt = startsAt;
+        entity.endsAt = endsAt;
+        entity.capacity = capacity;
+        entity.status = status;
+        entity.createdAt = now;
+        entity.updatedAt = now;
+        return entity;
+    }
+
+    public void update(
+            String title,
+            String description,
+            String venue,
+            Instant startsAt,
+            Instant endsAt,
+            int capacity,
+            EventStatus status,
+            Instant now
+    ) {
+        this.title = title;
+        this.description = description;
+        this.venue = venue;
+        this.startsAt = startsAt;
+        this.endsAt = endsAt;
+        this.capacity = capacity;
+        this.status = status;
+        this.updatedAt = now;
+    }
+
+    public void close(Instant now) {
+        this.status = EventStatus.CLOSED;
+        this.updatedAt = now;
+    }
+
     public UUID getId() {
         return id;
     }

@@ -37,7 +37,7 @@ export function EventDetailsPage() {
   }
 
   const isEnded = new Date(event.endsAt).getTime() < Date.now();
-  const isRegistrationClosed = event.full || isEnded || event.status !== 'PUBLISHED';
+  const isRegistrationClosed = isEnded || event.status !== 'PUBLISHED';
 
   return (
     <div className="space-y-6">
@@ -57,8 +57,8 @@ export function EventDetailsPage() {
                 Ended
               </span>
             ) : event.full ? (
-              <span className="rounded-full border border-red-200 bg-red-50 px-3 py-0.5 text-xs font-semibold text-red-700">
-                Full
+              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-0.5 text-xs font-semibold text-amber-800">
+                Full · Waitlist Open
               </span>
             ) : (
               <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-0.5 text-xs font-semibold text-emerald-700">
@@ -93,11 +93,19 @@ export function EventDetailsPage() {
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs lg:col-span-2">
-          <h2 className="text-base font-semibold text-slate-900">Register for this event</h2>
+          <h2 className="text-base font-semibold text-slate-900">
+            {event.full ? 'Join the Waitlist' : 'Register for this event'}
+          </h2>
           <p className="mt-1 mb-4 text-xs text-slate-500">
-            Free admission. You will receive an instant QR ticket pass upon registration.
+            {event.full
+              ? 'All confirmed spots are currently filled. Join the waitlist below—if a spot opens up, you will be automatically promoted in order.'
+              : 'Free admission. You will receive an instant QR ticket pass upon registration.'}
           </p>
-          <RegisterForm eventId={event.id} disabled={isRegistrationClosed} />
+          <RegisterForm
+            eventId={event.id}
+            disabled={isRegistrationClosed}
+            isWaitlist={event.full}
+          />
         </div>
       </div>
     </div>

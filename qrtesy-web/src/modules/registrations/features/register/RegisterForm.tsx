@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Loader2, Ticket } from 'lucide-react';
+import { AlertCircle, Clock, Loader2, Ticket } from 'lucide-react';
 import { ApiError } from '@/shared/types/api';
 import { registrationsApi } from '../../api/registrationsApi';
 
@@ -30,9 +30,10 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 interface RegisterFormProps {
   eventId: string;
   disabled: boolean;
+  isWaitlist?: boolean;
 }
 
-export function RegisterForm({ eventId, disabled }: RegisterFormProps) {
+export function RegisterForm({ eventId, disabled, isWaitlist = false }: RegisterFormProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
@@ -53,6 +54,8 @@ export function RegisterForm({ eventId, disabled }: RegisterFormProps) {
     onSuccess: (ticket) => {
       queryClient.invalidateQueries({ queryKey: ['public-events'] });
       queryClient.invalidateQueries({ queryKey: ['event-details', eventId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-events'] });
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', eventId] });
       navigate(`/ticket/${encodeURIComponent(ticket.ticketCode)}`, {
         state: { ticket },
       });
@@ -151,10 +154,15 @@ export function RegisterForm({ eventId, disabled }: RegisterFormProps) {
         {mutation.isPending ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Securing spot...</span>
+            <span>{isWaitlist ? 'Joining waitlist...' : 'Securing spot...'}</span>
           </>
         ) : disabled ? (
-          <span>Event Full</span>
+          <span>Registration Closed</span>
+        ) : isWaitlist ? (
+          <>
+            <Clock className="h-4 w-4" />
+            <span>Join Waitlist</span>
+          </>
         ) : (
           <>
             <Ticket className="h-4 w-4" />

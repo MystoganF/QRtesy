@@ -63,8 +63,8 @@ export function EventListPage() {
                     {event.title}
                   </h2>
                   {event.full ? (
-                    <span className="shrink-0 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
-                      Full
+                    <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                      Full · Waitlist Open
                     </span>
                   ) : (
                     <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">

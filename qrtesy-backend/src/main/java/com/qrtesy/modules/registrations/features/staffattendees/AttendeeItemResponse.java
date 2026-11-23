@@ -11,6 +11,7 @@ public record AttendeeItemResponse(
         String mobile,
         String status,
         OffsetDateTime registeredAt,
-        OffsetDateTime checkedInAt
+        OffsetDateTime checkedInAt,
+        Integer waitlistPosition
 ) {
 }

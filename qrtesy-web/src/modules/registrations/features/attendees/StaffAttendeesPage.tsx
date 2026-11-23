@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, CheckCircle2, Clock, Search, Users } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Hourglass, Search, Users, XCircle } from 'lucide-react';
 import { eventsApi } from '@/modules/events/api/eventsApi';
 import { formatDateTime, formatEventDate } from '@/shared/lib/dateTime';
 import { attendeesApi } from './attendeesApi';
@@ -78,7 +78,7 @@ export function StaffAttendeesPage() {
       </div>
 
       {data && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -104,6 +104,20 @@ export function StaffAttendeesPage() {
             </div>
             <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
               <CheckCircle2 className="h-5 w-5" />
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                Waitlisted
+              </p>
+              <p className="mt-1 text-2xl font-bold text-amber-700">
+                {data.waitlistedCount}
+              </p>
+            </div>
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+              <Hourglass className="h-5 w-5" />
             </span>
           </div>
         </div>
@@ -143,42 +157,44 @@ export function StaffAttendeesPage() {
                   </td>
                 </tr>
               ) : (
-                data.attendees.map((row) => {
-                  const checkedIn = row.status === 'CHECKED_IN';
-                  return (
-                    <tr key={row.registrationId} className="hover:bg-slate-50/80">
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                        {row.fullName}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.email}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">
-                        {row.mobile}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-slate-900">
-                        {row.ticketCode}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                        {formatDateTime(row.registeredAt)}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        {checkedIn ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>
-                              Checked in
-                              {row.checkedInAt ? ` · ${formatDateTime(row.checkedInAt)}` : ''}
-                            </span>
+                data.attendees.map((row) => (
+                  <tr key={row.registrationId} className="hover:bg-slate-50/80">
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                      {row.fullName}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.email}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">
+                      {row.mobile}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-slate-900">
+                      {row.ticketCode}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
+                      {formatDateTime(row.registeredAt)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {row.status === 'CHECKED_IN' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>
+                            Checked in
+                            {row.checkedInAt ? ` · ${formatDateTime(row.checkedInAt)}` : ''} </span> </span> ) : row.status === 'WAITLISTED' ? ( <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800"> <Hourglass className="h-3.5 w-3.5" /> <span> Waitlisted{row.waitlistPosition ? ` (#${row.waitlistPosition})` : ''}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span>Confirmed</span>
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
+                        </span>
+                      ) : row.status === 'CANCELLED' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                          <XCircle className="h-3.5 w-3.5" />
+                          <span>Cancelled</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>Confirmed</span>
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
