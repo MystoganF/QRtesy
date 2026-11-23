@@ -9,8 +9,8 @@ qrtesy-web/dist/
 qrtesy-web/.vite/
 
 # Backend (Java / Maven / Spring Boot)
-qrtesy-api/target/
-qrtesy-api/.mvn/timing.properties
+qrtesy-backend/target/
+qrtesy-backend/.mvn/timing.properties
 *.jar
 *.log
 
