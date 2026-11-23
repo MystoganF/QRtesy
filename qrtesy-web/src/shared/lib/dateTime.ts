@@ -10,7 +10,7 @@ export function formatEventDate(isoString: string): string {
   }).format(new Date(isoString));
 }
 
-export function formatTime12h(isoString: string): string {
+export function formatEventTime(isoString: string): string {
   return new Intl.DateTimeFormat('en-PH', {
     timeZone: MANILA_TZ,
     hour: 'numeric',
@@ -19,10 +19,10 @@ export function formatTime12h(isoString: string): string {
   }).format(new Date(isoString));
 }
 
-export function formatEventTimeRange(startsAt: string, endsAt: string): string {
-  return `${formatTime12h(startsAt)} – ${formatTime12h(endsAt)} (PHT)`;
+export function formatTimeRange(startsAt: string, endsAt: string): string {
+  return `${formatEventTime(startsAt)} – ${formatEventTime(endsAt)} (PHT)`;
 }
 
 export function formatDateTime(isoString: string): string {
-  return `${formatEventDate(isoString)}, ${formatTime12h(isoString)}`;
+  return `${formatEventDate(isoString)} · ${formatEventTime(isoString)}`;
 }
