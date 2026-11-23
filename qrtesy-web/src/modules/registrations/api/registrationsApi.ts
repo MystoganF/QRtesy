@@ -9,4 +9,15 @@ export const registrationsApi = {
     apiClient.get<RegistrationTicket>(
       `/api/registrations/${encodeURIComponent(ticketCode.trim())}?email=${encodeURIComponent(email.trim())}`
     ),
+
+  cancelByAttendee: (ticketCode: string, email: string) =>
+    apiClient.post<RegistrationTicket>(
+      `/api/registrations/${encodeURIComponent(ticketCode.trim())}/cancel`,
+      { email: email.trim() }
+    ),
+
+  cancelByStaff: (registrationId: string) =>
+    apiClient.post<RegistrationTicket>(
+      `/api/staff/registrations/${encodeURIComponent(registrationId)}/cancel`
+    ),
 };

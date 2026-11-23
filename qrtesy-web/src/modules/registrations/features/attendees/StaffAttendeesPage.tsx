@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Clock, Hourglass, Search, Users, XCircle } from 'lucide-react';
 import { eventsApi } from '@/modules/events/api/eventsApi';
+import { registrationsApi } from '@/modules/registrations/api/registrationsApi';
 import { formatDateTime, formatEventDate } from '@/shared/lib/dateTime';
+import { ApiError } from '@/shared/types/api';
 import { attendeesApi } from './attendeesApi';
 
 export function StaffAttendeesPage() {
   const { eventId: routeEventId } = useParams<{ eventId?: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [selectedEventId, setSelectedEventId] = useState<string>(routeEventId ?? '');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
 
   const { data: events } = useQuery({
     queryKey: ['public-events'],
@@ -32,9 +37,29 @@ export function StaffAttendeesPage() {
     enabled: Boolean(selectedEventId),
   });
 
+  const cancelMutation = useMutation({
+    mutationFn: (registrationId: string) => registrationsApi.cancelByStaff(registrationId),
+    onSuccess: () => {
+      setConfirmCancelId(null);
+      setActionError(null);
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', selectedEventId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-events'] });
+      queryClient.invalidateQueries({ queryKey: ['public-events'] });
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setActionError(err.message);
+      } else {
+        setActionError('Unable to cancel registration.');
+      }
+    },
+  });
+
   const handleEventChange = (nextId: string) => {
     setSelectedEventId(nextId);
     setSearchQuery('');
+    setConfirmCancelId(null);
+    setActionError(null);
     navigate(`/staff/events/${nextId}/attendees`, { replace: true });
   };
 
@@ -76,6 +101,16 @@ export function StaffAttendeesPage() {
           </div>
         </div>
       </div>
+
+      {actionError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <span>{actionError}</span>
+        </div>
+      )}
 
       {data && (
         <div className="grid gap-4 sm:grid-cols-3">
@@ -141,60 +176,107 @@ export function StaffAttendeesPage() {
                 <th className="px-4 py-3">Ticket Code</th>
                 <th className="px-4 py-3">Registered At</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     Loading attendees...
                   </td>
                 </tr>
               ) : !data || data.attendees.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                     No matching registrations found.
                   </td>
                 </tr>
               ) : (
-                data.attendees.map((row) => (
-                  <tr key={row.registrationId} className="hover:bg-slate-50/80">
-                    <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
-                      {row.fullName}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.email}</td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">
-                      {row.mobile}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-slate-900">
-                      {row.ticketCode}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
-                      {formatDateTime(row.registeredAt)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      {row.status === 'CHECKED_IN' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>
-                            Checked in
-                            {row.checkedInAt ? ` · ${formatDateTime(row.checkedInAt)}` : ''} </span> </span> ) : row.status === 'WAITLISTED' ? ( <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800"> <Hourglass className="h-3.5 w-3.5" /> <span> Waitlisted{row.waitlistPosition ? ` (#${row.waitlistPosition})` : ''}
+                data.attendees.map((row) => {
+                  const canCancel = row.status === 'CONFIRMED' || row.status === 'WAITLISTED';
+                  const isConfirming = confirmCancelId === row.registrationId;
+
+                  return (
+                    <tr key={row.registrationId} className="hover:bg-slate-50/80">
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">
+                        {row.fullName}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-600">{row.email}</td>
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-600">
+                        {row.mobile}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 font-mono text-xs font-semibold text-slate-900">
+                        {row.ticketCode}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-600">
+                        {formatDateTime(row.registeredAt)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        {row.status === 'CHECKED_IN' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            <span>
+                              Checked in
+                              {row.checkedInAt ? ` · ${formatDateTime(row.checkedInAt)}` : ''}
+                            </span>
                           </span>
-                        </span>
-                      ) : row.status === 'CANCELLED' ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
-                          <XCircle className="h-3.5 w-3.5" />
-                          <span>Cancelled</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>Confirmed</span>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                        ) : row.status === 'WAITLISTED' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                            <Hourglass className="h-3.5 w-3.5" />
+                            <span>
+                              Waitlisted{row.waitlistPosition ? ` (#${row.waitlistPosition})` : ''}
+                            </span>
+                          </span>
+                        ) : row.status === 'CANCELLED' ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700">
+                            <XCircle className="h-3.5 w-3.5" />
+                            <span>Cancelled</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>Confirmed</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-right">
+                        {canCancel ? (
+                          isConfirming ? (
+                            <div className="inline-flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={cancelMutation.isPending}
+                                onClick={() => cancelMutation.mutate(row.registrationId)}
+                                className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                              >
+                                Confirm
+                              </button>
+                              <button
+                                type="button"
+                                disabled={cancelMutation.isPending}
+                                onClick={() => setConfirmCancelId(null)}
+                                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                              >
+                                Keep
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmCancelId(row.registrationId)}
+                              className="rounded-md border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+                            >
+                              Cancel
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

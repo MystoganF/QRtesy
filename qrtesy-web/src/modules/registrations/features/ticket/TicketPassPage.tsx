@@ -8,7 +8,7 @@ export function TicketPassPage() {
   const { ticketCode = '' } = useParams<{ ticketCode: string }>();
   const location = useLocation();
   const initialTicket = (location.state as { ticket?: RegistrationTicket } | null)?.ticket ?? null;
-  const [ticket] = useState<RegistrationTicket | null>(initialTicket);
+  const [ticket, setTicket] = useState<RegistrationTicket | null>(initialTicket);
 
   if (ticket) {
     return (
@@ -30,7 +30,7 @@ export function TicketPassPage() {
           </Link>
         </div>
 
-        <TicketPassCard ticket={ticket} />
+        <TicketPassCard ticket={ticket} onTicketUpdated={setTicket} />
       </div>
     );
   }

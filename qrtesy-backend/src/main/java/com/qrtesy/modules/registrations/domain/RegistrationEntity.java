@@ -139,4 +139,8 @@ public class RegistrationEntity {
     public UUID getCheckedInBy() {
         return checkedInBy;
     }
+
+    public void cancel() {
+        this.status = RegistrationStatus.CANCELLED;
+    }
 }

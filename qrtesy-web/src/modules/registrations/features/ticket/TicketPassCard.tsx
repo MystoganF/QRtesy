@@ -1,16 +1,46 @@
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
-import { Calendar, CheckCircle2, Clock, MapPin, User, XCircle } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Clock, Loader2, MapPin, User, XCircle } from 'lucide-react';
 import { formatDateTime, formatEventDate, formatTimeRange } from '@/shared/lib/dateTime';
+import { ApiError } from '@/shared/types/api';
+import { registrationsApi } from '../../api/registrationsApi';
 import type { RegistrationTicket } from '../../types/registration.types';
 
 interface TicketPassCardProps {
   ticket: RegistrationTicket;
+  onTicketUpdated?: (updated: RegistrationTicket) => void;
 }
 
-export function TicketPassCard({ ticket }: TicketPassCardProps) {
+export function TicketPassCard({ ticket, onTicketUpdated }: TicketPassCardProps) {
+  const queryClient = useQueryClient();
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const cancelMutation = useMutation({
+    mutationFn: () => registrationsApi.cancelByAttendee(ticket.ticketCode, ticket.email),
+    onSuccess: (updated) => {
+      setConfirmingCancel(false);
+      setCancelError(null);
+      queryClient.invalidateQueries({ queryKey: ['public-events'] });
+      queryClient.invalidateQueries({ queryKey: ['event-details', ticket.eventId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-events'] });
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', ticket.eventId] });
+      onTicketUpdated?.(updated);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setCancelError(err.message);
+      } else {
+        setCancelError('Unable to cancel this registration right now.');
+      }
+    },
+  });
+
   const isCheckedIn = ticket.status === 'CHECKED_IN';
   const isWaitlisted = ticket.status === 'WAITLISTED';
   const isCancelled = ticket.status === 'CANCELLED';
+  const canCancel = ticket.status === 'CONFIRMED' || ticket.status === 'WAITLISTED';
 
   return (
     <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -52,7 +82,9 @@ export function TicketPassCard({ ticket }: TicketPassCardProps) {
         <p className="mt-1 text-center text-xs text-slate-500">
           {isWaitlisted
             ? 'Your spot is currently on the waitlist. Check back here via Find Ticket for promotion updates.'
-            : 'Present this QR code or ticket code at the event entrance.'}
+            : isCancelled
+              ? 'This ticket pass has been cancelled.'
+              : 'Present this QR code or ticket code at the event entrance.'}
         </p>
       </div>
 
@@ -112,6 +144,58 @@ export function TicketPassCard({ ticket }: TicketPassCardProps) {
           <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             <span>Checked in on {formatDateTime(ticket.checkedInAt)}</span>
+          </div>
+        )}
+
+        {cancelError && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-800"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{cancelError}</span>
+          </div>
+        )}
+
+        {canCancel && (
+          <div className="border-t border-slate-100 pt-4">
+            {!confirmingCancel ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setCancelError(null);
+                  setConfirmingCancel(true);
+                }}
+                className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+              >
+                Cancel Registration
+              </button>
+            ) : (
+              <div className="space-y-2.5 rounded-xl border border-red-200 bg-red-50/70 p-3">
+                <p className="text-xs font-medium text-red-900">
+                  Cancel this registration? Your spot will be released immediately and this ticket code cannot be reactivated.
+                </p>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    disabled={cancelMutation.isPending}
+                    onClick={() => setConfirmingCancel(false)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  >
+                    Keep Pass
+                  </button>
+                  <button
+                    type="button"
+                    disabled={cancelMutation.isPending}
+                    onClick={() => cancelMutation.mutate()}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {cancelMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>Yes, Cancel</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
