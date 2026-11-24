@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 import { formatEventDate, formatTimeRange } from '@/shared/lib/dateTime';
 import { eventsApi } from '../../api/eventsApi';
-import type { EventStatus } from '../../types/event.types';
-import type { StaffEventItem } from '../../types/event.types';
+import type { EventStatus, StaffEventItem } from '../../types/event.types';
 import { EventFormModal } from './EventFormModal';
 
 function StatusBadge({ status }: { status: EventStatus }) {
@@ -52,6 +51,8 @@ export function StaffEventsPage() {
     mutationFn: (eventId: string) => eventsApi.closeEvent(eventId),
     onSuccess: (_data, eventId) => {
       queryClient.invalidateQueries({ queryKey: ['staff-events'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-audit-logs'] });
       queryClient.invalidateQueries({ queryKey: ['public-events'] });
       queryClient.invalidateQueries({ queryKey: ['event-details', eventId] });
     },
@@ -141,25 +142,27 @@ export function StaffEventsPage() {
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openEditModal(event)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  <span>Edit</span>
-                </button>
-
                 {event.status !== 'CLOSED' && (
-                  <button
-                    type="button"
-                    disabled={closeMutation.isPending}
-                    onClick={() => closeMutation.mutate(event.id)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
-                  >
-                    <Lock className="h-3.5 w-3.5" />
-                    <span>Close</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(event)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={closeMutation.isPending}
+                      onClick={() => closeMutation.mutate(event.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                    >
+                      <Lock className="h-3.5 w-3.5" />
+                      <span>Close</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>

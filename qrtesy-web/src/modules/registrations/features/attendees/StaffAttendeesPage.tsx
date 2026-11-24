@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
+  ArrowUpCircle,
   CheckCircle2,
   Clock,
   Download,
@@ -13,6 +14,8 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
+import { apiClient } from '@/app/apiClient';
+import { authApi } from '@/modules/auth/api/authApi';
 import { eventsApi } from '@/modules/events/api/eventsApi';
 import { registrationsApi } from '@/modules/registrations/api/registrationsApi';
 import { formatDateTime, formatEventDate } from '@/shared/lib/dateTime';
@@ -30,6 +33,13 @@ export function StaffAttendeesPage() {
   const [confirmCancelId, setConfirmCancelId] = useState<string | null>(null);
   const [confirmUndoId, setConfirmUndoId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const { data: staff } = useQuery({
+    queryKey: ['staff-me'],
+    queryFn: authApi.me,
+  });
+
+  const isOrganizer = staff?.role === 'ORGANIZER';
 
   const { data: events } = useQuery({
     queryKey: ['staff-events'],
@@ -50,6 +60,26 @@ export function StaffAttendeesPage() {
     enabled: Boolean(selectedEventId),
   });
 
+  const promoteMutation = useMutation({
+    mutationFn: (registrationId: string) =>
+      apiClient.post(`/api/staff/registrations/${registrationId}/promote`),
+    onSuccess: () => {
+      setActionError(null);
+      queryClient.invalidateQueries({ queryKey: ['event-attendees', selectedEventId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-events'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-audit-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['public-events'] });
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setActionError(err.message);
+      } else {
+        setActionError('Unable to promote waitlisted attendee.');
+      }
+    },
+  });
+
   const cancelMutation = useMutation({
     mutationFn: (registrationId: string) => registrationsApi.cancelByStaff(registrationId),
     onSuccess: () => {
@@ -58,6 +88,7 @@ export function StaffAttendeesPage() {
       queryClient.invalidateQueries({ queryKey: ['event-attendees', selectedEventId] });
       queryClient.invalidateQueries({ queryKey: ['staff-events'] });
       queryClient.invalidateQueries({ queryKey: ['staff-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-audit-logs'] });
       queryClient.invalidateQueries({ queryKey: ['public-events'] });
     },
     onError: (err) => {
@@ -77,6 +108,7 @@ export function StaffAttendeesPage() {
       queryClient.invalidateQueries({ queryKey: ['event-attendees', selectedEventId] });
       queryClient.invalidateQueries({ queryKey: ['staff-events'] });
       queryClient.invalidateQueries({ queryKey: ['staff-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-audit-logs'] });
     },
     onError: (err) => {
       if (err instanceof ApiError) {
@@ -256,7 +288,13 @@ export function StaffAttendeesPage() {
                 </tr>
               ) : (
                 data.attendees.map((row) => {
-                  const canCancel = row.status === 'CONFIRMED' || row.status === 'WAITLISTED';
+                  const canCancel =
+                    isOrganizer && (row.status === 'CONFIRMED' || row.status === 'WAITLISTED');
+                  const canPromote =
+                    isOrganizer &&
+                    row.status === 'WAITLISTED' &&
+                    row.waitlistPosition === 1 &&
+                    data.remainingSpots > 0;
                   const isCheckedIn = row.status === 'CHECKED_IN';
                   const isConfirmingCancel = confirmCancelId === row.registrationId;
                   const isConfirmingUndo = confirmUndoId === row.registrationId;
@@ -359,16 +397,29 @@ export function StaffAttendeesPage() {
                               </button>
                             </div>
                           ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setConfirmUndoId(null);
-                                setConfirmCancelId(row.registrationId);
-                              }}
-                              className="cursor-pointer rounded-md border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
-                            >
-                              Cancel
-                            </button>
+                            <div className="inline-flex items-center gap-1.5">
+                              {canPromote && (
+                                <button
+                                  type="button"
+                                  disabled={promoteMutation.isPending}
+                                  onClick={() => promoteMutation.mutate(row.registrationId)}
+                                  className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
+                                >
+                                  <ArrowUpCircle className="h-3 w-3" />
+                                  <span>Promote</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setConfirmUndoId(null);
+                                  setConfirmCancelId(row.registrationId);
+                                }}
+                                className="cursor-pointer rounded-md border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
                           )
                         ) : (
                           <span className="text-xs text-slate-400">—</span>

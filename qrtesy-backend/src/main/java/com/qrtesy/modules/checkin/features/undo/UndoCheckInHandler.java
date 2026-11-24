@@ -1,5 +1,7 @@
 package com.qrtesy.modules.checkin.features.undo;
 
+import com.qrtesy.modules.audit.domain.AuditAction;
+import com.qrtesy.modules.audit.domain.AuditLogService;
 import com.qrtesy.modules.registrations.domain.RegistrationEntity;
 import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.RegistrationStatus;
@@ -14,9 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class UndoCheckInHandler {
 
     private final RegistrationRepository registrationRepository;
+    private final AuditLogService auditLogService;
 
-    public UndoCheckInHandler(RegistrationRepository registrationRepository) {
+    public UndoCheckInHandler(
+            RegistrationRepository registrationRepository,
+            AuditLogService auditLogService
+    ) {
         this.registrationRepository = registrationRepository;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -46,6 +53,14 @@ public class UndoCheckInHandler {
 
         registration.undoCheckIn();
         RegistrationEntity saved = registrationRepository.save(registration);
+
+        auditLogService.logStaffAction(
+                staff,
+                saved.getEventId(),
+                saved.getId(),
+                AuditAction.CHECKIN_UNDONE,
+                "Reverted check-in for " + saved.getFullName() + " (" + saved.getTicketCode() + ")."
+        );
 
         return new UndoCheckInResponse(
                 saved.getId(),

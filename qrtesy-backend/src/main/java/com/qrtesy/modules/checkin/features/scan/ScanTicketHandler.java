@@ -1,7 +1,10 @@
 package com.qrtesy.modules.checkin.features.scan;
 
+import com.qrtesy.modules.audit.domain.AuditAction;
+import com.qrtesy.modules.audit.domain.AuditLogService;
 import com.qrtesy.modules.events.domain.EventEntity;
 import com.qrtesy.modules.events.domain.EventRepository;
+import com.qrtesy.modules.events.domain.EventStatus;
 import com.qrtesy.modules.registrations.domain.RegistrationEntity;
 import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.RegistrationStatus;
@@ -15,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,22 @@ public class ScanTicketHandler {
     private final RegistrationRepository registrationRepository;
     private final TicketQrSigner ticketQrSigner;
     private final ZoneId manilaZoneId;
+    private final AuditLogService auditLogService;
+
+    @Autowired
+    public ScanTicketHandler(
+            EventRepository eventRepository,
+            RegistrationRepository registrationRepository,
+            TicketQrSigner ticketQrSigner,
+            ZoneId manilaZoneId,
+            AuditLogService auditLogService
+    ) {
+        this.eventRepository = eventRepository;
+        this.registrationRepository = registrationRepository;
+        this.ticketQrSigner = ticketQrSigner;
+        this.manilaZoneId = manilaZoneId;
+        this.auditLogService = auditLogService;
+    }
 
     public ScanTicketHandler(
             EventRepository eventRepository,
@@ -33,10 +53,7 @@ public class ScanTicketHandler {
             TicketQrSigner ticketQrSigner,
             ZoneId manilaZoneId
     ) {
-        this.eventRepository = eventRepository;
-        this.registrationRepository = registrationRepository;
-        this.ticketQrSigner = ticketQrSigner;
-        this.manilaZoneId = manilaZoneId;
+        this(eventRepository, registrationRepository, ticketQrSigner, manilaZoneId, null);
     }
 
     @Transactional
@@ -51,6 +68,14 @@ public class ScanTicketHandler {
                         "EVENT_NOT_FOUND",
                         "Event was not found."
                 ));
+
+        if (event.getStatus() == EventStatus.DRAFT) {
+            throw new DomainException(
+                    HttpStatus.CONFLICT,
+                    "EVENT_NOT_PUBLISHED",
+                    "Check-in is not allowed while this event is still in Draft status."
+            );
+        }
 
         Instant now = Instant.now();
         LocalDate todayManila = now.atZone(manilaZoneId).toLocalDate();
@@ -102,6 +127,16 @@ public class ScanTicketHandler {
             reg.markCheckedIn(now, staff.id());
             registrationRepository.save(reg);
             OffsetDateTime checkedInTime = now.atZone(manilaZoneId).toOffsetDateTime();
+
+            if (auditLogService != null) {
+                auditLogService.logStaffAction(
+                        staff,
+                        eventId,
+                        reg.getId(),
+                        AuditAction.TICKET_CHECKED_IN,
+                        "Checked in " + reg.getFullName() + " (" + reg.getTicketCode() + ")."
+                );
+            }
 
             return new ScanTicketResponse(
                     CheckInOutcome.CHECKED_IN,
