@@ -143,4 +143,12 @@ public class RegistrationEntity {
     public void cancel() {
         this.status = RegistrationStatus.CANCELLED;
     }
+
+    public void undoCheckIn() {
+        if (this.status == RegistrationStatus.CHECKED_IN) {
+            this.status = RegistrationStatus.CONFIRMED;
+            this.checkedInAt = null;
+            this.checkedInBy = null;
+        }
+    }
 }
