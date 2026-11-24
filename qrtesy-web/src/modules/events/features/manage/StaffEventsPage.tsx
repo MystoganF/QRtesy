@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import { formatEventDate, formatTimeRange } from '@/shared/lib/dateTime';
 import { eventsApi } from '../../api/eventsApi';
-import type { EventStatus } from '../../type/event.types';
-import type { StaffEventItem } from '../../type/event.types';
+import type { EventStatus } from '../../types/event.types';
+import type { StaffEventItem } from '../../types/event.types';
 import { EventFormModal } from './EventFormModal';
 
 function StatusBadge({ status }: { status: EventStatus }) {

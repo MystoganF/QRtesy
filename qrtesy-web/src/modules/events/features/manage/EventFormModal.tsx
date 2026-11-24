@@ -8,8 +8,8 @@ import { ApiError } from '@/shared/types/api';
 import { eventsApi } from '../../api/eventsApi';
 
 
-import type { EventStatus } from '../../type/event.types';
-import type { StaffEventItem } from '../../type/event.types';
+import type { EventStatus } from '../../types/event.types';
+import type { StaffEventItem } from '../../types/event.types';
 
 const eventFormSchema = z
   .object({

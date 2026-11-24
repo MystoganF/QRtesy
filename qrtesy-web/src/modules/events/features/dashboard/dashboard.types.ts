@@ -1,4 +1,4 @@
-import type { EventStatus } from "../../type/event.types";
+import type { EventStatus } from "../../types/event.types";
 
 export interface DashboardEventSummary {
   id: string;
