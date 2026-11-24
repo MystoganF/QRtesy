@@ -1,7 +1,8 @@
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AppShell } from '@/shared/components/AppShell';
 import { EventListPage } from '@/modules/events/features/browse/EventListPage';
 import { EventDetailsPage } from '@/modules/events/features/details/EventDetailsPage';
+import { StaffDashboardPage } from '@/modules/events/features/dashboard/StaffDashboardPage';
 import { StaffEventsPage } from '@/modules/events/features/manage/StaffEventsPage';
 import { TicketLookupPage } from '@/modules/registrations/features/ticket/TicketLookupPage';
 import { TicketPassPage } from '@/modules/registrations/features/ticket/TicketPassPage';
@@ -24,6 +25,8 @@ export const router = createBrowserRouter([
         path: 'staff',
         element: <RequireStaffAuth />,
         children: [
+          { index: true, element: <Navigate to="/staff/dashboard" replace /> },
+          { path: 'dashboard', element: <StaffDashboardPage /> },
           { path: 'events', element: <StaffEventsPage /> },
           { path: 'checkin', element: <DoorCheckInPage /> },
           { path: 'attendees', element: <StaffAttendeesPage /> },

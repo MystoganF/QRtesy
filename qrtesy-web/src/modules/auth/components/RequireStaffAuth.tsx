@@ -1,5 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CalendarCog, ClipboardList, Loader2, LogOut, QrCode, UserCheck } from 'lucide-react';
+import {
+  CalendarCog,
+  ClipboardList,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  QrCode,
+  UserCheck,
+} from 'lucide-react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/shared/lib/cn';
 import { authApi } from '../api/authApi';
@@ -38,7 +46,7 @@ export function RequireStaffAuth() {
 
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     cn(
-      'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+      'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
       isActive
         ? 'bg-slate-900 text-white'
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -48,6 +56,10 @@ export function RequireStaffAuth() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
+          <NavLink to="/staff/dashboard" className={tabClass}>
+            <LayoutDashboard className="h-4 w-4" />
+            <span>Dashboard</span>
+          </NavLink>
           <NavLink to="/staff/events" className={tabClass}>
             <CalendarCog className="h-4 w-4" />
             <span>Events</span>
@@ -71,7 +83,7 @@ export function RequireStaffAuth() {
             type="button"
             onClick={() => logoutMutation.mutate()}
             disabled={logoutMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <LogOut className="h-3.5 w-3.5" />
             <span>Sign out</span>

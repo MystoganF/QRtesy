@@ -1,63 +1,91 @@
-import { useState, type FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { AlertCircle, Loader2, Search } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { AlertCircle, ArrowLeft, Loader2, Search } from 'lucide-react';
 import { ApiError } from '@/shared/types/api';
 import { registrationsApi } from '../../api/registrationsApi';
-import { TicketPassCard } from './TicketPassCard';
 import type { RegistrationTicket } from '../../types/registration.types';
+import { TicketPassCard } from './TicketPassCard';
+
+const lookupSchema = z.object({
+  ticketCode: z.string().trim().min(1, 'Ticket code is required.'),
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email address is required.')
+    .email('Please enter a valid email address.'),
+});
+
+type LookupFormValues = z.infer<typeof lookupSchema>;
 
 export function TicketLookupPage() {
   const [searchParams] = useSearchParams();
-  const [ticketCode, setTicketCode] = useState(searchParams.get('code') ?? '');
-  const [email, setEmail] = useState('');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [foundTicket, setFoundTicket] = useState<RegistrationTicket | null>(null);
+  const [ticket, setTicket] = useState<RegistrationTicket | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LookupFormValues>({
+    resolver: zodResolver(lookupSchema),
+    defaultValues: {
+      ticketCode: searchParams.get('code') ?? '',
+      email: '',
+    },
+  });
 
   const mutation = useMutation({
-    mutationFn: () => registrationsApi.lookup(ticketCode, email),
-    onSuccess: (data) => {
-      setErrorMessage(null);
-      setFoundTicket(data);
+    mutationFn: (values: LookupFormValues) =>
+      registrationsApi.lookup(values.ticketCode, values.email),
+    onSuccess: (found) => {
+      setServerError(null);
+      setTicket(found);
     },
     onError: (err) => {
-      setFoundTicket(null);
+      setTicket(null);
       if (err instanceof ApiError && err.status === 404) {
-        setErrorMessage('Ticket not found');
+        setServerError('Ticket not found');
       } else if (err instanceof ApiError) {
-        setErrorMessage(err.message);
+        setServerError(err.message);
       } else {
-        setErrorMessage('Unable to look up ticket right now.');
+        setServerError('Unable to look up ticket right now.');
       }
     },
   });
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!ticketCode.trim() || !email.trim()) {
-      setErrorMessage('Please enter both your ticket code and email address.');
-      return;
-    }
-    setErrorMessage(null);
-    mutation.mutate();
+  const onSubmit = (values: LookupFormValues) => {
+    setServerError(null);
+    mutation.mutate(values);
   };
 
   return (
-    <div className="space-y-8">
-      <div className="mx-auto max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
+    <div className="space-y-6">
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to events
+      </Link>
+
+      <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xs">
         <h1 className="text-xl font-bold text-slate-900">Find Your Ticket</h1>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-xs text-slate-500">
           Enter your ticket code and the email address used during registration.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          {errorMessage && (
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-4 space-y-4">
+          {serverError && (
             <div
               role="alert"
-              className="flex items-center gap-2.5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800"
+              className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800"
             >
               <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{errorMessage}</span>
+              <span>{serverError}</span>
             </div>
           )}
 
@@ -68,11 +96,13 @@ export function TicketLookupPage() {
             <input
               id="lookupCode"
               type="text"
-              value={ticketCode}
-              onChange={(e) => setTicketCode(e.target.value.toUpperCase())}
-              placeholder="QRT-ZTTZZ5"
+              placeholder="QRT-XXXXXX"
+              {...register('ticketCode')}
               className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm uppercase text-slate-900 placeholder:font-sans placeholder:normal-case placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
             />
+            {errors.ticketCode && (
+              <p className="mt-1 text-xs text-red-600">{errors.ticketCode.message}</p>
+            )}
           </div>
 
           <div>
@@ -82,11 +112,13 @@ export function TicketLookupPage() {
             <input
               id="lookupEmail"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               placeholder="juan@example.com"
+              {...register('email')}
               className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
             />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+            )}
           </div>
 
           <button
@@ -95,21 +127,16 @@ export function TicketLookupPage() {
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:bg-slate-300"
           >
             {mutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Searching...</span>
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <>
-                <Search className="h-4 w-4" />
-                <span>View Ticket Pass</span>
-              </>
+              <Search className="h-4 w-4" />
             )}
+            <span>View Ticket Pass</span>
           </button>
         </form>
       </div>
 
-      {foundTicket && <TicketPassCard ticket={foundTicket} />}
+      {ticket && <TicketPassCard ticket={ticket} onTicketUpdated={setTicket} />}
     </div>
   );
 }

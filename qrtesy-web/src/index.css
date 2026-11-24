@@ -8,6 +8,21 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  select:not(:disabled),
+  a[href],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+
   ::selection {
     background-color: #0f172a;
     color: #ffffff;

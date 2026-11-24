@@ -113,4 +113,20 @@ public interface RegistrationRepository extends JpaRepository<RegistrationEntity
             @Param("eventId") UUID eventId,
             @Param("ticketCode") String ticketCode
     );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r
+            FROM RegistrationEntity r
+            WHERE UPPER(r.ticketCode) = UPPER(:ticketCode)
+            """)
+    Optional<RegistrationEntity> findByTicketCodeForUpdate(@Param("ticketCode") String ticketCode);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r
+            FROM RegistrationEntity r
+            WHERE r.id = :registrationId
+            """)
+    Optional<RegistrationEntity> findByIdForUpdate(@Param("registrationId") UUID registrationId);
 }
