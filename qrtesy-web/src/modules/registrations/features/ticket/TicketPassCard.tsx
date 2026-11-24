@@ -41,6 +41,7 @@ export function TicketPassCard({ ticket, onTicketUpdated }: TicketPassCardProps)
   const isWaitlisted = ticket.status === 'WAITLISTED';
   const isCancelled = ticket.status === 'CANCELLED';
   const canCancel = ticket.status === 'CONFIRMED' || ticket.status === 'WAITLISTED';
+  const qrPayload = ticket.qrToken ?? ticket.ticketCode;
 
   return (
     <div className="mx-auto max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -74,7 +75,7 @@ export function TicketPassCard({ ticket, onTicketUpdated }: TicketPassCardProps)
 
       <div className="flex flex-col items-center border-b border-dashed border-slate-200 px-6 py-6">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
-          <QRCodeSVG value={ticket.ticketCode} size={192} level="M" />
+          <QRCodeSVG value={qrPayload} size={192} level="M" />
         </div>
         <p className="mt-3 font-mono text-lg font-bold tracking-widest text-slate-900">
           {ticket.ticketCode}

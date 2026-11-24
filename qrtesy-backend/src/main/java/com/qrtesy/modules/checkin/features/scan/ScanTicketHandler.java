@@ -7,6 +7,8 @@ import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.RegistrationStatus;
 import com.qrtesy.shared.exception.DomainException;
 import com.qrtesy.shared.security.JwtCookieFilter.StaffPrincipal;
+import com.qrtesy.shared.security.TicketQrSigner;
+import com.qrtesy.shared.security.TicketQrSigner.VerificationResult;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -22,15 +24,18 @@ public class ScanTicketHandler {
 
     private final EventRepository eventRepository;
     private final RegistrationRepository registrationRepository;
+    private final TicketQrSigner ticketQrSigner;
     private final ZoneId manilaZoneId;
 
     public ScanTicketHandler(
             EventRepository eventRepository,
             RegistrationRepository registrationRepository,
+            TicketQrSigner ticketQrSigner,
             ZoneId manilaZoneId
     ) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
+        this.ticketQrSigner = ticketQrSigner;
         this.manilaZoneId = manilaZoneId;
     }
 
@@ -60,7 +65,21 @@ public class ScanTicketHandler {
             );
         }
 
-        String normalizedCode = request.ticketCode().trim().toUpperCase();
+        VerificationResult verification = ticketQrSigner.verifyAndExtract(eventId, request.ticketCode());
+        if (!verification.valid()) {
+            return new ScanTicketResponse(
+                    CheckInOutcome.INVALID_TICKET,
+                    verification.errorMessage(),
+                    null,
+                    request.ticketCode().trim(),
+                    null,
+                    null,
+                    null,
+                    manilaZoneId.getId()
+            );
+        }
+
+        String normalizedCode = verification.ticketCode();
         Optional<RegistrationEntity> match = registrationRepository
                 .findByEventIdAndTicketCodeForUpdate(eventId, normalizedCode);
 
