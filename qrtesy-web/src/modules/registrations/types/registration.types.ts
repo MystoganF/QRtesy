@@ -8,6 +8,7 @@ export interface RegisterAttendeePayload {
 export interface RegistrationTicket {
   registrationId: string;
   ticketCode: string;
+  qrToken?: string;
   fullName: string;
   email: string;
   mobile: string;

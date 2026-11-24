@@ -4,6 +4,7 @@ import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.TicketDetailsProjection;
 import com.qrtesy.modules.registrations.features.register.RegistrationResponse;
 import com.qrtesy.shared.exception.DomainException;
+import com.qrtesy.shared.security.TicketQrSigner;
 import java.time.ZoneId;
 import java.util.Locale;
 import org.springframework.http.HttpStatus;
@@ -14,10 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class LookupTicketHandler {
 
     private final RegistrationRepository registrationRepository;
+    private final TicketQrSigner ticketQrSigner;
     private final ZoneId manilaZoneId;
 
-    public LookupTicketHandler(RegistrationRepository registrationRepository, ZoneId manilaZoneId) {
+    public LookupTicketHandler(
+            RegistrationRepository registrationRepository,
+            TicketQrSigner ticketQrSigner,
+            ZoneId manilaZoneId
+    ) {
         this.registrationRepository = registrationRepository;
+        this.ticketQrSigner = ticketQrSigner;
         this.manilaZoneId = manilaZoneId;
     }
 
@@ -42,9 +49,12 @@ public class LookupTicketHandler {
                         "Ticket not found."
                 ));
 
+        String qrToken = ticketQrSigner.sign(ticket.getEventId(), ticket.getTicketCode());
+
         return new RegistrationResponse(
                 ticket.getRegistrationId(),
                 ticket.getTicketCode(),
+                qrToken,
                 ticket.getFullName(),
                 ticket.getEmail(),
                 ticket.getMobile(),
@@ -58,7 +68,8 @@ public class LookupTicketHandler {
                 ticket.getEventVenue(),
                 ticket.getEventStartsAt().atZone(manilaZoneId).toOffsetDateTime(),
                 ticket.getEventEndsAt().atZone(manilaZoneId).toOffsetDateTime(),
-                manilaZoneId.getId()
+                manilaZoneId.getId(),
+                null
         );
     }
 }

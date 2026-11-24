@@ -24,12 +24,15 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtCookieFilter jwtCookieFilter;
+    private final RateLimitFilter rateLimitFilter;
     private final List<String> allowedOrigins;
 
     public SecurityConfig(
             JwtCookieFilter jwtCookieFilter,
+            RateLimitFilter rateLimitFilter,
             @Value("${app.cors.allowed-origins:http://localhost:5173}") String originsCsv) {
         this.jwtCookieFilter = jwtCookieFilter;
+        this.rateLimitFilter = rateLimitFilter;
         this.allowedOrigins = Arrays.stream(originsCsv.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
@@ -59,7 +62,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/staff/**").authenticated()
                         .anyRequest().denyAll()
                 )
-                .addFilterBefore(jwtCookieFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtCookieFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(rateLimitFilter, JwtCookieFilter.class);
 
         return http.build();
     }

@@ -1,11 +1,29 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, Loader2, QrCode, XCircle } from 'lucide-react';
 import { eventsApi } from '@/modules/events/api/eventsApi';
+import { LiveCheckInCounter } from '@/modules/checkin/components/LiveCheckInCounter';
+import { QrCameraScanner } from '@/modules/checkin/components/QrCameraScanner';
+import {
+  ScanFeedbackToast,
+  type ScanToastItem,
+} from '@/modules/checkin/components/ScanFeedbackToast';
 import { formatDateTime, formatEventDate } from '@/shared/lib/dateTime';
 import { ApiError } from '@/shared/types/api';
 import { checkinApi } from './checkinApi';
 import type { ScanTicketResponse } from './checkin.types';
+
+function normalizeTicketInput(raw: string): string {
+  if (/^qrt1\./i.test(raw)) {
+    const parts = raw.split('.');
+    if (parts.length >= 2) {
+      parts[0] = 'QRT1';
+      parts[1] = parts[1].toUpperCase();
+      return parts.join('.');
+    }
+  }
+  return raw.toUpperCase();
+}
 
 export function DoorCheckInPage() {
   const queryClient = useQueryClient();
@@ -15,6 +33,9 @@ export function DoorCheckInPage() {
   const [ticketCode, setTicketCode] = useState<string>('');
   const [scanResult, setScanResult] = useState<ScanTicketResponse | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [activeToast, setActiveToast] = useState<ScanToastItem | null>(null);
+
+  const dismissToast = useCallback(() => setActiveToast(null), []);
 
   const { data: events, isLoading: loadingEvents } = useQuery({
     queryKey: ['public-events'],
@@ -28,42 +49,54 @@ export function DoorCheckInPage() {
   }, [events, selectedEventId]);
 
   const scanMutation = useMutation({
-    mutationFn: () => checkinApi.scanTicket(selectedEventId, ticketCode),
+    mutationFn: (codeToScan: string) => checkinApi.scanTicket(selectedEventId, codeToScan),
     onSuccess: (data) => {
       setRequestError(null);
       setScanResult(data);
+      setActiveToast({ id: Date.now(), kind: 'scan', result: data });
       setTicketCode('');
       if (data.outcome === 'CHECKED_IN') {
         queryClient.invalidateQueries({ queryKey: ['event-attendees', selectedEventId] });
+        queryClient.invalidateQueries({ queryKey: ['staff-events'] });
       }
       inputRef.current?.focus();
     },
     onError: (err) => {
       setScanResult(null);
-      if (err instanceof ApiError) {
-        setRequestError(err.message);
-      } else {
-        setRequestError('Unable to verify ticket right now.');
-      }
+      const message =
+        err instanceof ApiError ? err.message : 'Unable to verify ticket right now.';
+      setRequestError(message);
+      setActiveToast({ id: Date.now(), kind: 'error', message });
       inputRef.current?.focus();
     },
   });
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedEventId || !ticketCode.trim()) return;
-    scanMutation.mutate();
+    const trimmed = ticketCode.trim();
+    if (!selectedEventId || !trimmed || scanMutation.isPending) return;
+    scanMutation.mutate(trimmed);
+  };
+
+  const handleCameraScan = (decodedText: string) => {
+    const trimmed = decodedText.trim();
+    if (!selectedEventId || !trimmed || scanMutation.isPending) return;
+    scanMutation.mutate(trimmed);
   };
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
+      <ScanFeedbackToast toast={activeToast} onDismiss={dismissToast} />
+
+      {selectedEventId && <LiveCheckInCounter eventId={selectedEventId} />}
+
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
         <h1 className="text-xl font-bold text-slate-900">Door Check-in</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Select the active event, then scan or type the attendee&apos;s ticket code.
+          Select the active event, then scan the QR pass or enter the ticket code manually.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <div className="mt-5 space-y-4">
           <div>
             <label htmlFor="checkinEvent" className="block text-sm font-medium text-slate-700">
               Event
@@ -76,6 +109,7 @@ export function DoorCheckInPage() {
                 setSelectedEventId(e.target.value);
                 setScanResult(null);
                 setRequestError(null);
+                setActiveToast(null);
                 inputRef.current?.focus();
               }}
               className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:outline-none"
@@ -88,9 +122,14 @@ export function DoorCheckInPage() {
             </select>
           </div>
 
-          <div>
+          <QrCameraScanner
+            onScan={handleCameraScan}
+            disabled={!selectedEventId || scanMutation.isPending}
+          />
+
+          <form onSubmit={handleSubmit}>
             <label htmlFor="scanTicketCode" className="block text-sm font-medium text-slate-700">
-              Ticket Code
+              Manual Ticket Code
             </label>
             <div className="mt-1 flex gap-2">
               <input
@@ -100,9 +139,9 @@ export function DoorCheckInPage() {
                 autoFocus
                 autoComplete="off"
                 value={ticketCode}
-                onChange={(e) => setTicketCode(e.target.value.toUpperCase())}
-                placeholder="Scan or enter code (e.g., QRT-ZTTZZ5)"
-                className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-mono text-base uppercase tracking-wider text-slate-900 placeholder:font-sans placeholder:text-sm placeholder:normal-case placeholder:tracking-normal placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
+                onChange={(e) => setTicketCode(normalizeTicketInput(e.target.value))}
+                placeholder="Enter code (e.g., QRT-ZTTZZ5)"
+                className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 font-mono text-base tracking-wider text-slate-900 placeholder:font-sans placeholder:text-sm placeholder:tracking-normal placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
               />
               <button
                 type="submit"
@@ -117,8 +156,8 @@ export function DoorCheckInPage() {
                 <span>Check In</span>
               </button>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
 
       {requestError && (

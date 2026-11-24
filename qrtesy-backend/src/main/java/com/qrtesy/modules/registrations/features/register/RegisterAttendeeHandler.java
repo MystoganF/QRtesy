@@ -7,6 +7,7 @@ import com.qrtesy.modules.registrations.domain.RegistrationEntity;
 import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.RegistrationStatus;
 import com.qrtesy.shared.exception.DomainException;
+import com.qrtesy.shared.security.TicketQrSigner;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -24,15 +25,18 @@ public class RegisterAttendeeHandler {
 
     private final EventRepository eventRepository;
     private final RegistrationRepository registrationRepository;
+    private final TicketQrSigner ticketQrSigner;
     private final ZoneId manilaZoneId;
 
     public RegisterAttendeeHandler(
             EventRepository eventRepository,
             RegistrationRepository registrationRepository,
+            TicketQrSigner ticketQrSigner,
             ZoneId manilaZoneId
     ) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
+        this.ticketQrSigner = ticketQrSigner;
         this.manilaZoneId = manilaZoneId;
     }
 
@@ -81,9 +85,12 @@ public class RegisterAttendeeHandler {
                 ? registrationRepository.findWaitlistPosition(event.getId(), saved.getRegisteredAt(), saved.getId())
                 : null;
 
+        String qrToken = ticketQrSigner.sign(event.getId(), saved.getTicketCode());
+
         return new RegistrationResponse(
                 saved.getId(),
                 saved.getTicketCode(),
+                qrToken,
                 saved.getFullName(),
                 saved.getEmail(),
                 saved.getMobile(),
