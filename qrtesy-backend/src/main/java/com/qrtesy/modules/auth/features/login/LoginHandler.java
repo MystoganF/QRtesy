@@ -67,7 +67,7 @@ public class LoginHandler {
         ResponseCookie cookie = ResponseCookie.from(cookieName, token)
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSecure ? "None" : "Lax")
                 .path("/")
                 .maxAge(Duration.ofHours(expirationHours))
                 .build();

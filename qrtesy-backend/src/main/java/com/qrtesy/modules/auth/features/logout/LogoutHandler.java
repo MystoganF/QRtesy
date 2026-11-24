@@ -23,7 +23,7 @@ public class LogoutHandler {
         return ResponseCookie.from(cookieName, "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSecure ? "None" : "Lax")
                 .path("/")
                 .maxAge(Duration.ZERO)
                 .build();
