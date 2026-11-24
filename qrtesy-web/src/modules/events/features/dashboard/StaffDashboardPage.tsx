@@ -12,8 +12,11 @@ import {
   Loader2,
   MapPin,
   QrCode,
+  UserX,
   Users,
 } from 'lucide-react';
+import { AuditTrailPanel } from '@/modules/audit/AuditTrailPanel';
+import { authApi } from '@/modules/auth/api/authApi';
 import { attendeesApi } from '@/modules/registrations/features/attendees/attendeesApi';
 import { formatEventDate, formatTimeRange } from '@/shared/lib/dateTime';
 import type { EventStatus } from '../../types/event.types';
@@ -45,10 +48,17 @@ export function StaffDashboardPage() {
   const [exportingEventId, setExportingEventId] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
 
+  const { data: staff } = useQuery({
+    queryKey: ['staff-me'],
+    queryFn: authApi.me,
+  });
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ['staff-dashboard'],
     queryFn: dashboardApi.getSummary,
   });
+
+  const isOrganizer = staff?.role === 'ORGANIZER';
 
   const handleExportCsv = async (eventId: string) => {
     setExportError(null);
@@ -65,8 +75,8 @@ export function StaffDashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-28 animate-pulse rounded-xl border border-slate-200 bg-white p-5" />
           ))}
         </div>
@@ -90,7 +100,7 @@ export function StaffDashboardPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">Operations Dashboard</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Live registration occupancy, door check-in progress, and CSV exports across all events.
+            Live registration occupancy, door check-in progress, and no-show metrics.
           </p>
         </div>
 
@@ -102,17 +112,19 @@ export function StaffDashboardPage() {
             <QrCode className="h-4 w-4" />
             <span>Open Door Check-in</span>
           </Link>
-          <Link
-            to="/staff/events"
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            <CalendarCog className="h-4 w-4" />
-            <span>Manage Events</span>
-          </Link>
+          {isOrganizer && (
+            <Link
+              to="/staff/events"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              <CalendarCog className="h-4 w-4" />
+              <span>Manage Events</span>
+            </Link>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
@@ -164,6 +176,19 @@ export function StaffDashboardPage() {
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              No-Shows
+            </p>
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-700">
+              <UserX className="h-4 w-4" />
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-bold text-rose-700">{data.totalNoShows}</p>
+          <p className="mt-1 text-xs text-slate-500">Unscanned after event start</p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Active Waitlist
             </p>
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
@@ -200,13 +225,18 @@ export function StaffDashboardPage() {
             return (
               <div
                 key={ev.id}
-                className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4"
+                className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs"
               >
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2.5">
                       <h3 className="text-base font-bold text-slate-900">{ev.title}</h3>
                       <StatusBadge status={ev.status} />
+                      {ev.hasStarted && (
+                        <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-0.5 text-xs font-semibold text-rose-700">
+                          {ev.noShowCount} no-show{ev.noShowCount === 1 ? '' : 's'}
+                        </span>
+                      )}
                       {ev.waitlistCount > 0 && (
                         <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                           +{ev.waitlistCount} waitlisted
@@ -272,6 +302,12 @@ export function StaffDashboardPage() {
           })
         )}
       </div>
+
+      {isOrganizer && (
+        <AuditTrailPanel
+          events={data.events.map((ev) => ({ id: ev.id, title: ev.title }))}
+        />
+      )}
     </div>
   );
 }

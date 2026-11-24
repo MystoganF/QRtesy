@@ -21,40 +21,54 @@ public class StaffAccountSeeder implements ApplicationRunner {
 
     private final StaffUserRepository staffUserRepository;
     private final PasswordEncoder passwordEncoder;
-    private final String seedName;
-    private final String seedUsername;
-    private final String seedPassword;
+    private final String organizerName;
+    private final String organizerUsername;
+    private final String organizerPassword;
+    private final String doorName;
+    private final String doorUsername;
+    private final String doorPassword;
 
     public StaffAccountSeeder(
             StaffUserRepository staffUserRepository,
             PasswordEncoder passwordEncoder,
-            @Value("${app.seed.staff-name:Event Organizer}") String seedName,
-            @Value("${app.seed.staff-username:staff}") String seedUsername,
-            @Value("${app.seed.staff-password:ChangeMe123!}") String seedPassword
+            @Value("${app.seed.staff-name:Event Organizer}") String organizerName,
+            @Value("${app.seed.staff-username:staff}") String organizerUsername,
+            @Value("${app.seed.staff-password:ChangeMe123!}") String organizerPassword,
+            @Value("${app.seed.door-name:Door Check-in Staff}") String doorName,
+            @Value("${app.seed.door-username:door}") String doorUsername,
+            @Value("${app.seed.door-password:DoorStaff123!}") String doorPassword
     ) {
         this.staffUserRepository = staffUserRepository;
         this.passwordEncoder = passwordEncoder;
-        this.seedName = seedName;
-        this.seedUsername = seedUsername;
-        this.seedPassword = seedPassword;
+        this.organizerName = organizerName;
+        this.organizerUsername = organizerUsername;
+        this.organizerPassword = organizerPassword;
+        this.doorName = doorName;
+        this.doorUsername = doorUsername;
+        this.doorPassword = doorPassword;
     }
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        String normalizedUsername = seedUsername.trim().toLowerCase(Locale.ROOT);
+        seedAccountIfMissing(organizerName, organizerUsername, organizerPassword, StaffRole.ORGANIZER);
+        seedAccountIfMissing(doorName, doorUsername, doorPassword, StaffRole.DOOR_STAFF);
+    }
+
+    private void seedAccountIfMissing(String name, String rawUsername, String rawPassword, StaffRole role) {
+        String normalizedUsername = rawUsername.trim().toLowerCase(Locale.ROOT);
         if (normalizedUsername.isEmpty() || staffUserRepository.existsByUsernameIgnoreCase(normalizedUsername)) {
             return;
         }
 
-        StaffUserEntity organizer = StaffUserEntity.create(
-                seedName.trim(),
+        StaffUserEntity account = StaffUserEntity.create(
+                name.trim(),
                 normalizedUsername,
-                passwordEncoder.encode(seedPassword),
-                StaffRole.ORGANIZER,
+                passwordEncoder.encode(rawPassword),
+                role,
                 Instant.now()
         );
-        staffUserRepository.save(organizer);
-        log.info("Seeded default staff account '{}'", normalizedUsername);
+        staffUserRepository.save(account);
+        log.info("Seeded default {} account '{}'", role.name(), normalizedUsername);
     }
 }

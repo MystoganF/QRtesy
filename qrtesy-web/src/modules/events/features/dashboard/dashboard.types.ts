@@ -8,9 +8,11 @@ export interface DashboardEventSummary {
   endsAt: string;
   timezone: string;
   status: EventStatus;
+  hasStarted: boolean;
   capacity: number;
   confirmedCount: number;
   checkedInCount: number;
+  noShowCount: number;
   occupiedCount: number;
   remainingSpots: number;
   waitlistCount: number;
@@ -26,6 +28,7 @@ export interface StaffDashboardResponse {
   totalCapacity: number;
   totalOccupied: number;
   totalCheckedIn: number;
+  totalNoShows: number;
   totalWaitlisted: number;
   overallCheckInRatePercent: number;
   events: DashboardEventSummary[];

@@ -19,6 +19,26 @@ public interface EventRepository extends JpaRepository<EventEntity, UUID> {
             SELECT
                 e.id AS id,
                 e.title AS title,
+                e.venue AS venue,
+                e.starts_at AS startsAt,
+                e.ends_at AS endsAt,
+                e.capacity AS capacity,
+                e.status AS status,
+                COALESCE(COUNT(r.id) FILTER (WHERE r.status = 'CONFIRMED'), 0) AS confirmedCount,
+                COALESCE(COUNT(r.id) FILTER (WHERE r.status = 'CHECKED_IN'), 0) AS checkedInCount,
+                COALESCE(COUNT(r.id) FILTER (WHERE r.status = 'WAITLISTED'), 0) AS waitlistCount,
+                COALESCE(COUNT(r.id) FILTER (WHERE r.status = 'CANCELLED'), 0) AS cancelledCount
+            FROM qrtesy.events e
+            LEFT JOIN qrtesy.registrations r ON r.event_id = e.id
+            GROUP BY e.id, e.title, e.venue, e.starts_at, e.ends_at, e.capacity, e.status
+            ORDER BY e.starts_at DESC
+            """, nativeQuery = true)
+    List<DashboardEventProjection> findAllDashboardSummaries();
+
+    @Query(value = """
+            SELECT
+                e.id AS id,
+                e.title AS title,
                 e.description AS description,
                 e.venue AS venue,
                 e.starts_at AS startsAt,

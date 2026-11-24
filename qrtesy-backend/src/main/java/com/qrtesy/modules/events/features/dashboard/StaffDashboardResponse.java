@@ -10,6 +10,7 @@ public record StaffDashboardResponse(
         int totalCapacity,
         int totalOccupied,
         int totalCheckedIn,
+        int totalNoShows,
         int totalWaitlisted,
         double overallCheckInRatePercent,
         List<DashboardEventSummary> events

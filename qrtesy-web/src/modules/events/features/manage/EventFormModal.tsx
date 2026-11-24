@@ -6,10 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2, Save, X } from 'lucide-react';
 import { ApiError } from '@/shared/types/api';
 import { eventsApi } from '../../api/eventsApi';
-
-
-import type { EventStatus } from '../../types/event.types';
-import type { StaffEventItem } from '../../types/event.types';
+import type { EventStatus, StaffEventItem } from '../../types/event.types';
 
 const eventFormSchema = z
   .object({
@@ -47,6 +44,10 @@ export function EventFormModal({ editingEvent, onClose }: EventFormModalProps) {
   const queryClient = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const hasRegistrations = Boolean(
+    editingEvent && (editingEvent.occupiedCount > 0 || editingEvent.waitlistCount > 0)
+  );
+
   const {
     register,
     handleSubmit,
@@ -83,6 +84,8 @@ export function EventFormModal({ editingEvent, onClose }: EventFormModalProps) {
         : eventsApi.createEvent(values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff-events'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-audit-logs'] });
       queryClient.invalidateQueries({ queryKey: ['public-events'] });
       if (editingEvent) {
         queryClient.invalidateQueries({ queryKey: ['event-details', editingEvent.id] });
@@ -253,7 +256,9 @@ export function EventFormModal({ editingEvent, onClose }: EventFormModalProps) {
                 {...register('status')}
                 className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-slate-900 focus:outline-none"
               >
-                <option value="DRAFT">Draft (Hidden from public)</option>
+                <option value="DRAFT" disabled={hasRegistrations}>
+                  Draft {hasRegistrations ? '(Unavailable with registrations)' : '(Hidden from public)'}
+                </option>
                 <option value="PUBLISHED">Published (Open to public)</option>
                 <option value="CLOSED">Closed (Registrations stopped)</option>
               </select>

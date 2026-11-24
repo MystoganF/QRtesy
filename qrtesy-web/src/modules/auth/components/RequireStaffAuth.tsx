@@ -44,6 +44,12 @@ export function RequireStaffAuth() {
     return <Navigate to="/staff/login" state={{ from: location }} replace />;
   }
 
+  const isOrganizer = staff.role === 'ORGANIZER';
+
+  if (!isOrganizer && location.pathname.startsWith('/staff/events') && !location.pathname.endsWith('/attendees')) {
+    return <Navigate to="/staff/checkin" replace />;
+  }
+
   const tabClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
@@ -60,10 +66,12 @@ export function RequireStaffAuth() {
             <LayoutDashboard className="h-4 w-4" />
             <span>Dashboard</span>
           </NavLink>
-          <NavLink to="/staff/events" className={tabClass}>
-            <CalendarCog className="h-4 w-4" />
-            <span>Events</span>
-          </NavLink>
+          {isOrganizer && (
+            <NavLink to="/staff/events" className={tabClass}>
+              <CalendarCog className="h-4 w-4" />
+              <span>Events</span>
+            </NavLink>
+          )}
           <NavLink to="/staff/checkin" className={tabClass}>
             <QrCode className="h-4 w-4" />
             <span>Door Check-in</span>
@@ -78,6 +86,9 @@ export function RequireStaffAuth() {
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
             <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
             <span>{staff.name}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+              {isOrganizer ? 'Organizer' : 'Door Staff'}
+            </span>
           </span>
           <button
             type="button"

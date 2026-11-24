@@ -1,8 +1,11 @@
 package com.qrtesy.modules.events.features.manage;
 
+import com.qrtesy.modules.audit.domain.AuditAction;
+import com.qrtesy.modules.audit.domain.AuditLogService;
 import com.qrtesy.modules.events.domain.EventAvailabilityProjection;
 import com.qrtesy.modules.events.domain.EventEntity;
 import com.qrtesy.modules.events.domain.EventRepository;
+import com.qrtesy.modules.events.domain.EventStatus;
 import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.RegistrationStatus;
 import com.qrtesy.modules.registrations.domain.WaitlistPromotionService;
@@ -22,17 +25,20 @@ public class ManageEventsHandler {
     private final EventRepository eventRepository;
     private final RegistrationRepository registrationRepository;
     private final WaitlistPromotionService waitlistPromotionService;
+    private final AuditLogService auditLogService;
     private final ZoneId manilaZoneId;
 
     public ManageEventsHandler(
             EventRepository eventRepository,
             RegistrationRepository registrationRepository,
             WaitlistPromotionService waitlistPromotionService,
+            AuditLogService auditLogService,
             ZoneId manilaZoneId
     ) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
         this.waitlistPromotionService = waitlistPromotionService;
+        this.auditLogService = auditLogService;
         this.manilaZoneId = manilaZoneId;
     }
 
@@ -64,6 +70,14 @@ public class ManageEventsHandler {
                 )
         );
 
+        auditLogService.logCurrentStaffAction(
+                saved.getId(),
+                null,
+                AuditAction.EVENT_CREATED,
+                "Created event \"" + saved.getTitle() + "\" (" + saved.getStatus().name()
+                        + ", capacity " + saved.getCapacity() + ")."
+        );
+
         return toResponse(saved, 0L, 0L);
     }
 
@@ -78,7 +92,25 @@ public class ManageEventsHandler {
                         "Event was not found."
                 ));
 
+        if (event.getStatus() == EventStatus.CLOSED) {
+            throw new DomainException(
+                    HttpStatus.CONFLICT,
+                    "EVENT_CLOSED",
+                    "Closed events cannot be modified."
+            );
+        }
+
         long occupiedBefore = registrationRepository.countOccupiedSpots(eventId);
+        long waitlistBefore = registrationRepository.countByEventIdAndStatus(eventId, RegistrationStatus.WAITLISTED);
+
+        if (request.status() == EventStatus.DRAFT && (occupiedBefore > 0 || waitlistBefore > 0)) {
+            throw new DomainException(
+                    HttpStatus.CONFLICT,
+                    "CANNOT_UNPUBLISH_WITH_REGISTRATIONS",
+                    "Events with active registrations cannot be reverted to Draft. Close the event instead."
+            );
+        }
+
         if (request.capacity() < occupiedBefore) {
             throw new DomainException(
                     HttpStatus.CONFLICT,
@@ -86,6 +118,9 @@ public class ManageEventsHandler {
                     "Capacity cannot be lower than the number of people already registered (" + occupiedBefore + ")."
             );
         }
+
+        EventStatus previousStatus = event.getStatus();
+        int previousCapacity = event.getCapacity();
 
         Instant startsAt = ZonedDateTime.of(request.eventDate(), request.startTime(), manilaZoneId).toInstant();
         Instant endsAt = ZonedDateTime.of(request.eventDate(), request.endTime(), manilaZoneId).toInstant();
@@ -103,8 +138,26 @@ public class ManageEventsHandler {
 
         EventEntity saved = eventRepository.save(event);
 
-        // Automatically promote earliest waitlisted attendees if capacity increased
-        waitlistPromotionService.promoteFromWaitlist(eventId, saved.getCapacity());
+        if (saved.getStatus() == EventStatus.CLOSED && previousStatus != EventStatus.CLOSED) {
+            auditLogService.logCurrentStaffAction(
+                    saved.getId(),
+                    null,
+                    AuditAction.EVENT_CLOSED,
+                    "Closed event \"" + saved.getTitle() + "\"."
+            );
+        } else {
+            auditLogService.logCurrentStaffAction(
+                    saved.getId(),
+                    null,
+                    AuditAction.EVENT_UPDATED,
+                    "Updated event \"" + saved.getTitle() + "\" (status: " + saved.getStatus().name()
+                            + ", capacity: " + previousCapacity + " -> " + saved.getCapacity() + ")."
+            );
+        }
+
+        if (saved.getStatus() == EventStatus.PUBLISHED) {
+            waitlistPromotionService.promoteFromWaitlist(eventId, saved.getCapacity());
+        }
 
         long occupiedAfter = registrationRepository.countOccupiedSpots(eventId);
         long waitlistAfter = registrationRepository.countByEventIdAndStatus(eventId, RegistrationStatus.WAITLISTED);
@@ -120,8 +173,24 @@ public class ManageEventsHandler {
                         "Event was not found."
                 ));
 
+        if (event.getStatus() == EventStatus.CLOSED) {
+            throw new DomainException(
+                    HttpStatus.CONFLICT,
+                    "EVENT_ALREADY_CLOSED",
+                    "This event is already closed."
+            );
+        }
+
         event.close(Instant.now());
         EventEntity saved = eventRepository.save(event);
+
+        auditLogService.logCurrentStaffAction(
+                saved.getId(),
+                null,
+                AuditAction.EVENT_CLOSED,
+                "Closed event \"" + saved.getTitle() + "\"."
+        );
+
         long occupiedCount = registrationRepository.countOccupiedSpots(eventId);
         long waitlistCount = registrationRepository.countByEventIdAndStatus(eventId, RegistrationStatus.WAITLISTED);
         return toResponse(saved, occupiedCount, waitlistCount);

@@ -3,6 +3,7 @@ package com.qrtesy.modules.registrations.features.register;
 import com.qrtesy.modules.events.domain.EventEntity;
 import com.qrtesy.modules.events.domain.EventRepository;
 import com.qrtesy.modules.events.domain.EventStatus;
+import com.qrtesy.modules.notifications.domain.EmailNotificationService;
 import com.qrtesy.modules.registrations.domain.RegistrationEntity;
 import com.qrtesy.modules.registrations.domain.RegistrationRepository;
 import com.qrtesy.modules.registrations.domain.RegistrationStatus;
@@ -26,17 +27,20 @@ public class RegisterAttendeeHandler {
     private final EventRepository eventRepository;
     private final RegistrationRepository registrationRepository;
     private final TicketQrSigner ticketQrSigner;
+    private final EmailNotificationService emailNotificationService;
     private final ZoneId manilaZoneId;
 
     public RegisterAttendeeHandler(
             EventRepository eventRepository,
             RegistrationRepository registrationRepository,
             TicketQrSigner ticketQrSigner,
+            EmailNotificationService emailNotificationService,
             ZoneId manilaZoneId
     ) {
         this.eventRepository = eventRepository;
         this.registrationRepository = registrationRepository;
         this.ticketQrSigner = ticketQrSigner;
+        this.emailNotificationService = emailNotificationService;
         this.manilaZoneId = manilaZoneId;
     }
 
@@ -84,6 +88,8 @@ public class RegisterAttendeeHandler {
         Integer waitlistPosition = saved.getStatus() == RegistrationStatus.WAITLISTED
                 ? registrationRepository.findWaitlistPosition(event.getId(), saved.getRegisteredAt(), saved.getId())
                 : null;
+
+        emailNotificationService.sendRegistrationConfirmationAfterCommit(event, saved, waitlistPosition);
 
         String qrToken = ticketQrSigner.sign(event.getId(), saved.getTicketCode());
 
